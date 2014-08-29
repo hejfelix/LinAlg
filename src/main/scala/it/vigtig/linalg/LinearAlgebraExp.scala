@@ -19,7 +19,7 @@ trait LinearAlgebraExp extends LinearAlgebra with BaseExp with DslExp with LinAl
   }
 
   override def vector_scale[T: Manifest: Numeric](v: Exp[Vector[T]], s: Exp[T]) = toAtom(VectorScale(v, s))
-	//override def vector_add[T: Manifest : Numeric](v:Rep[Vector[T]],u:Rep[Vector[T]]) = toAtom(VectorAdd(v,u))
+	override def vector_add[T: Manifest : Numeric](v:Rep[Vector[T]],u:Rep[Vector[T]]) = toAtom(VectorAdd(v,u))
 
   override type Vector[T] = Array[T]
 
@@ -55,9 +55,9 @@ trait LinAlgFWTransform extends BaseFatExp with EffectExp with IfThenElseFatExp 
 
 }
 
-trait LinAlg2Loops extends LinAlgFWTransform with LinearAlgebraExp {
+trait LinAlg2Loops extends LinAlgFWTransform with LinearAlgebraExp with LinearAlgebraExpOpt {
 
-  implicit def any2rep[T: Manifest](t: T) = unit(t)
+  //implicit def any2rep[T: Manifest](t: T) = unit(t)
   /*
     we enrich Vectors (now, Arrays) with foreach and zipWith.
     This is virtual code because we work on Rep[T]s and
@@ -87,9 +87,11 @@ trait LinAlg2Loops extends LinAlgFWTransform with LinearAlgebraExp {
   }
 
   def vscale_loopform[T:Manifest:Numeric](a:Rep[Vector[T]],s:Rep[T]) = a * s
+  def vadd_loopform[T:Manifest:Numeric](a:Rep[Vector[T]],b:Rep[Vector[T]]) = a.zipWith(b)(_+_)
 
   override def onCreate[A:Manifest](s: Sym[A], d: Def[A]) = (d match {
-    case v@VectorScale(v,scalar) => s.atPhase(xform) { vscale_loopform(xform(v),xform(scalar))(v.mT,v.nT).asInstanceOf[Exp[A]] }
+    case vec@VectorScale(v,scalar) => s.atPhase(xform) { vscale_loopform(xform(v),xform(scalar))(vec.mT,vec.nT).asInstanceOf[Exp[A]] }
+    case vec@VectorAdd(a,b) => s.atPhase(xform) { vadd_loopform(xform(a),xform(b))(vec.mT,vec.nT).asInstanceOf[Exp[A]] }
     case _ => super.onCreate(s,d)
   }).asInstanceOf[Exp[A]]
 

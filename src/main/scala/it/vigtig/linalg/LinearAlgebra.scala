@@ -3,6 +3,7 @@ package it.vigtig.linalg
 import scala.virtualization.lms.common._
 import language.implicitConversions
 import language.higherKinds
+import java.io.{PrintWriter,StringWriter,FileOutputStream}
 
 trait LinearAlgebra extends Base with Dsl {
   // Concepts
@@ -57,6 +58,23 @@ trait Prog extends LinearAlgebra {
   def i(v: Rep[Vector[Int]]): Rep[Vector[Int]] = v + v
 }
 
+trait Impl extends LinAlg2Loops with EffectExp with CompileScala { 
+  self =>
+    override val codegen = new ScalaGenEffect with ScalaGenLinearAlgebra { val IR: self.type = self }    
+    
+    def f(v: Rep[Vector[Double]]): Rep[Vector[Double]] 
+    def i(v: Rep[Vector[Int]]): Rep[Vector[Int]] 
+
+    codegen.withStream(new PrintWriter(System.out)) {
+        val b1 = reifyEffects(i(Array(1,2,3)))
+        //codegen.emitBlock(b1)
+        codegen.stream.flush
+        //println("### After forward transformation")
+        val b2 = xform.runOnce(b1)
+        codegen.emitBlock(b2)
+    }
+}
+
 object Main extends App {
 /*
   val prog = new Prog with LinearAlgebraInterpreter
@@ -68,13 +86,24 @@ object Main extends App {
   }
   progIR.codegen.emitSource(progIR.h, "H", new java.io.PrintWriter(System.out))
 
-  val prog2 = new Prog with LinearAlgebraExpOpt with EffectExp with CompileScala { self =>
+  /*val prog2 = new Prog with LinAlg2Loops with EffectExp with CompileScala { self =>
     override val codegen = new ScalaGenEffect with ScalaGenLinearAlgebra { val IR: self.type = self }
-  }
-  val f = prog2.compile(prog2.f)
-  val i = prog2.compile(prog2.i)
-  println(f(Array(1d,2d,3d))) 
+    
+  }*/
+
+  val p2 = new Prog with Impl 
+
+  /*val f = prog2.compile(prog2.f)
+  println(f(Array(1d,2d,3d)).mkString(",")) 
   val x = Array(1,2,3)
-  println(i(x).mkString(","))
-  prog2.codegen.emitSource(prog2.i,"I",new java.io.PrintWriter(System.out))
+  prog2.codegen.emitSource(prog2.f,"F",new java.io.PrintWriter(System.out))
+  val b = reifyEffects(prog2.f(Array(1,2,3)))*/
+/*
+  prog2.codegen.withStream(new PrintWriter(System.out)){
+
+    println("### first")
+    prog2.codegen.emitBlock(prog2.f(Array(1d,2d,3d)))
+
+  }
+*/
 }
