@@ -86,6 +86,19 @@ trait LinAlg2Loops extends LinAlgFWTransform with LinearAlgebraExp with LinearAl
     } 
   }
 
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
+    case vec@VectorScale(v,scalar) => vector_scale(f(v),f(scalar))(vec.mT,vec.nT)
+    case vec@VectorAdd(a,b) => vector_add(f(a),f(b))(vec.mT,vec.nT)
+    case afs@ArrayFromSeq(xs) => array_obj_fromseq(f(xs))(afs.m)
+    case _ => super.mirror(e,f)
+  }).asInstanceOf[Exp[A]] // why??
+
+  override def mirrorDef[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Def[A] = (e match {
+    case vec@VectorScale(v,scalar) => vector_scale(f(v),f(scalar))(vec.mT,vec.nT)
+    case vec@VectorAdd(a,b) => vector_add(f(a),f(b))(vec.mT,vec.nT)
+    case _ => super.mirrorDef(e,f)
+  }).asInstanceOf[Def[A]] // why??
+
   def vscale_loopform[T:Manifest:Numeric](a:Rep[Vector[T]],s:Rep[T]) = a * s
   def vadd_loopform[T:Manifest:Numeric](a:Rep[Vector[T]],b:Rep[Vector[T]]) = a.zipWith(b)(_+_)
 

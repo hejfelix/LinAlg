@@ -60,38 +60,53 @@ trait Prog extends LinearAlgebra {
 
 trait Impl extends LinAlg2Loops with EffectExp with CompileScala { 
   self =>
-    override val codegen = new ScalaGenEffect with ScalaGenLinearAlgebra { val IR: self.type = self }    
-    
+    override val codegen = new ScalaGenEffect with ScalaGenLinearAlgebra  { val IR: self.type = self }    
     def f(v: Rep[Vector[Double]]): Rep[Vector[Double]] 
-    def i(v: Rep[Vector[Int]]): Rep[Vector[Int]] 
-
+    
     codegen.withStream(new PrintWriter(System.out)) {
-        val b1 = reifyEffects(i(Array(1,2,3)))
-        //codegen.emitBlock(b1)
+        val b1 = reifyEffects(f(Array(1d,2d,3d)))
+        codegen.emitBlock(b1)
         codegen.stream.flush
-        //println("### After forward transformation")
-        val b2 = xform.runOnce(b1)
+        val b2 = xform.run(b1)
         codegen.emitBlock(b2)
     }
 }
 
 object Main extends App {
-/*
-  val prog = new Prog with LinearAlgebraInterpreter
-  println(prog.f(Seq(1.0, 2.0))) // prints “Seq(12.34, 24.68)”  
-*/
+
+  def time(b: =>Unit) = {
+    val s = System.currentTimeMillis
+    b
+    System.currentTimeMillis-s
+  }
 
   val progIR = new Prog with LinearAlgebraExp with EffectExp with CompileScala { self =>
     override val codegen = new ScalaGenEffect with ScalaGenLinearAlgebra { val IR: self.type = self }
   }
   progIR.codegen.emitSource(progIR.h, "H", new java.io.PrintWriter(System.out))
 
-  /*val prog2 = new Prog with LinAlg2Loops with EffectExp with CompileScala { self =>
-    override val codegen = new ScalaGenEffect with ScalaGenLinearAlgebra { val IR: self.type = self }
-    
-  }*/
-
   val p2 = new Prog with Impl 
+  val cf:Array[Double] => Array[Double] = p2.compile(p2.f)
+  
+  val N = 100000
+  val rounds = 200
+  val rnd = new util.Random(System.currentTimeMillis)
+  val array = Array.fill(N) { rnd.nextDouble }
+
+  def naiveF(v:Array[Double]):Array[Double] = v map (_*12.34d)
+
+  def benchmark(f: Array[Double] => Array[Double]) {
+    val bench = time {
+      for(i<-0 until rounds){
+        f(array)
+      }
+    }
+    println(s"Time taken = $bench")
+  }
+  
+
+  benchmark(cf)
+  benchmark(naiveF)
 
   /*val f = prog2.compile(prog2.f)
   println(f(Array(1d,2d,3d)).mkString(",")) 
