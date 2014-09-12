@@ -60,7 +60,20 @@ trait Prog extends LinearAlgebra {
 
 trait Impl extends  EffectExp with CompileScala with LinAlg2Loops { 
   self =>
-    override val codegen = new ScalaGenEffect with ScalaGenLinearAlgebra  { val IR: self.type = self }    
+
+    /*
+      Inject the worklisttransformer to the code generator
+    */
+    override val codegen = new ScalaGenEffect with ScalaGenLinearAlgebra  { 
+      val IR: self.type = self 
+      
+      override def emitSource[A : Manifest](args: List[Sym[_]], body: Block[A], className: String, out: PrintWriter) = {
+        val b2 = xform.run(body)
+        super.emitSource(args,b2,className,out)
+      }
+
+    }    
+
     def f(v: Rep[Vector[Double]]): Rep[Vector[Double]] 
     
     codegen.withStream(new PrintWriter(System.out)) {
