@@ -65,11 +65,8 @@ trait Impl extends  EffectExp with CompileScala with LinAlg2Loops {
     
     codegen.withStream(new PrintWriter(System.out)) {
         val b1 = reifyEffects(f(Array(1d,2d,3d)))
-        //codegen.emitBlock(b1)
-        codegen.stream.flush
         val b2 = xform.run(b1)
-        codegen.emitBlock(b1)
-        compile(f)
+        codegen.emitBlock(b2)
     }
 }
 
@@ -80,12 +77,7 @@ object Main extends App {
     b
     System.currentTimeMillis-s
   }
-/*
-  val progIR = new Prog with LinearAlgebraExp with EffectExp with CompileScala { self =>
-    override val codegen = new ScalaGenEffect with ScalaGenLinearAlgebra { val IR: self.type = self }
-  }
-  progIR.codegen.emitSource(progIR.h, "H", new java.io.PrintWriter(System.out))
-*/
+
   val p2 = new Prog with Impl 
   val cf:Array[Double] => Array[Double] = p2.compile(p2.f)
   p2.codegen.emitSource(p2.f,"F",new java.io.PrintWriter(System.out))
@@ -110,17 +102,5 @@ object Main extends App {
   benchmark(cf)
   benchmark(naiveF)
 
-  /*val f = prog2.compile(prog2.f)
-  println(f(Array(1d,2d,3d)).mkString(",")) 
-  val x = Array(1,2,3)
-  prog2.codegen.emitSource(prog2.f,"F",new java.io.PrintWriter(System.out))
-  val b = reifyEffects(prog2.f(Array(1,2,3)))*/
-/*
-  prog2.codegen.withStream(new PrintWriter(System.out)){
 
-    println("### first")
-    prog2.codegen.emitBlock(prog2.f(Array(1d,2d,3d)))
-
-  }
-*/
 }
