@@ -58,17 +58,18 @@ trait Prog extends LinearAlgebra {
   def i(v: Rep[Vector[Int]]): Rep[Vector[Int]] = v + v
 }
 
-trait Impl extends LinAlg2Loops with EffectExp with CompileScala { 
+trait Impl extends  EffectExp with CompileScala with LinAlg2Loops { 
   self =>
     override val codegen = new ScalaGenEffect with ScalaGenLinearAlgebra  { val IR: self.type = self }    
     def f(v: Rep[Vector[Double]]): Rep[Vector[Double]] 
     
     codegen.withStream(new PrintWriter(System.out)) {
         val b1 = reifyEffects(f(Array(1d,2d,3d)))
-        codegen.emitBlock(b1)
+        //codegen.emitBlock(b1)
         codegen.stream.flush
         val b2 = xform.run(b1)
-        codegen.emitBlock(b2)
+        codegen.emitBlock(b1)
+        compile(f)
     }
 }
 
@@ -79,21 +80,22 @@ object Main extends App {
     b
     System.currentTimeMillis-s
   }
-
+/*
   val progIR = new Prog with LinearAlgebraExp with EffectExp with CompileScala { self =>
     override val codegen = new ScalaGenEffect with ScalaGenLinearAlgebra { val IR: self.type = self }
   }
   progIR.codegen.emitSource(progIR.h, "H", new java.io.PrintWriter(System.out))
-
+*/
   val p2 = new Prog with Impl 
   val cf:Array[Double] => Array[Double] = p2.compile(p2.f)
-  
+  p2.codegen.emitSource(p2.f,"F",new java.io.PrintWriter(System.out))
   val N = 100000
   val rounds = 200
   val rnd = new util.Random(System.currentTimeMillis)
   val array = Array.fill(N) { rnd.nextDouble }
 
-  def naiveF(v:Array[Double]):Array[Double] = v map (_*12.34d)
+
+  def naiveF(v:Array[Double]):Array[Double] = v map ( _ * 12.34d )
 
   def benchmark(f: Array[Double] => Array[Double]) {
     val bench = time {

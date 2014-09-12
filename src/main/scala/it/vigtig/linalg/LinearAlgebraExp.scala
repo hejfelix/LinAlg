@@ -55,7 +55,7 @@ trait LinAlgFWTransform extends BaseFatExp with EffectExp with IfThenElseFatExp 
 
 }
 
-trait LinAlg2Loops extends LinAlgFWTransform with LinearAlgebraExp with LinearAlgebraExpOpt {
+trait LinAlg2Loops extends LinAlgFWTransform with LinearAlgebraExpOpt {
 
   //implicit def any2rep[T: Manifest](t: T) = unit(t)
   /*
