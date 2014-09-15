@@ -65,6 +65,7 @@ trait LinAlg2Loops extends LinAlgFWTransform with LinearAlgebraExp with LinearAl
     contain AST representations of while loops, array-constructors, 
     etc...
   */
+  val UNROLL = 8
   implicit class enrichArray[T:Manifest:Numeric](a: Rep[Array[T]]) {
     def foreach(f: Rep[T] => Rep[Unit]):Rep[Unit] = {
       var i=0; while(i<a.length) { f(a(i)); i+= 1 } 
@@ -75,15 +76,16 @@ trait LinAlg2Loops extends LinAlgFWTransform with LinearAlgebraExp with LinearAl
       res
     }
     def map[U:Manifest](f:(Rep[T]) => Rep[U]) = {
-      val res = NewArray[U](a.length)
-      var i = 0;while(i<res.length) { res(i) = f(a(i)); i+=1}
+      val L = a.length
+      val res = NewArray[U](L)
+      var i = 0
+      while(i*UNROLL<L) { //Unroll based on parameter
+         ((0 until UNROLL):Range).foreach(x => {res(i+x) = f(a(i+x))}) 
+         i+=UNROLL
+      }
       res
     }
-    def *(u:Rep[T]) = {
-      val res = NewArray[T](a.length)
-      var i = 0;while(i<res.length) { res(i) = a(i)*u; i+=1}
-      res
-    } 
+    def *(u:Rep[T]) = map(_*u) 
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {

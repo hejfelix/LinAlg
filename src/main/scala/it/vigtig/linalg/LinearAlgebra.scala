@@ -58,29 +58,24 @@ trait Prog extends LinearAlgebra {
   def i(v: Rep[Vector[Int]]): Rep[Vector[Int]] = v + v
 }
 
-trait Impl extends  EffectExp with CompileScala with LinAlg2Loops { 
+trait Impl extends EffectExp with CompileScala with LinAlg2Loops { 
   self =>
-
     /*
       Inject the worklisttransformer to the code generator
     */
     override val codegen = new ScalaGenEffect with ScalaGenLinearAlgebra  { 
       val IR: self.type = self 
-      
-      override def emitSource[A : Manifest](args: List[Sym[_]], body: Block[A], className: String, out: PrintWriter) = {
-        val b2 = xform.run(body)
-        super.emitSource(args,b2,className,out)
-      }
-
+      override def emitSource[A : Manifest](args: List[Sym[_]], body: Block[A], className: String, out: PrintWriter) = 
+        super.emitSource(args,xform.run(body),className,out)
     }    
-
     def f(v: Rep[Vector[Double]]): Rep[Vector[Double]] 
-    
+
+    /*
     codegen.withStream(new PrintWriter(System.out)) {
         val b1 = reifyEffects(f(Array(1d,2d,3d)))
         val b2 = xform.run(b1)
         codegen.emitBlock(b2)
-    }
+    }*/
 }
 
 object Main extends App {
@@ -91,29 +86,30 @@ object Main extends App {
     System.currentTimeMillis-s
   }
 
-  val p2 = new Prog with Impl 
-  val cf:Array[Double] => Array[Double] = p2.compile(p2.f)
-  p2.codegen.emitSource(p2.f,"F",new java.io.PrintWriter(System.out))
-  val N = 100000
-  val rounds = 200
+  def naiveF[T:Manifest](scalar:T)(v:Array[T])(implicit nt:Numeric[T]):Array[T] = v.map( nt.times(_ ,scalar) ).toArray
+
+  def benchmark(f: Array[Double] => Array[Double]) {
+    val bench = ((0 until rounds) map { _ => time(f(array)) }).sum/rounds.toDouble
+    println(s"Average time taken = $bench milliseconds")
+  }
+
+  val N = 8000000
+  val rounds = 400
   val rnd = new util.Random(System.currentTimeMillis)
   val array = Array.fill(N) { rnd.nextDouble }
 
-
-  def naiveF(v:Array[Double]):Array[Double] = v map ( _ * 12.34d )
-
-  def benchmark(f: Array[Double] => Array[Double]) {
-    val bench = time {
-      for(i<-0 until rounds){
-        f(array)
-      }
-    }
-    println(s"Time taken = $bench")
-  }
   
+  for(N<-List(1,2,4,8)){
+    println(s"Unrolling $N times...")
+    val p2 = new Prog with Impl { override val UNROLL = N } //Unroll loop N times
+    val cf:Array[Double] => Array[Double] = p2.compile(p2.f)
+    //p2.codegen.emitSource(p2.f,"F",new java.io.PrintWriter(System.out))
+    benchmark(cf)
+  }
 
-  benchmark(cf)
-  benchmark(naiveF)
+  
+  println("Benchmark naive f with numeric typeclass and FP...")
+  benchmark(naiveF(12.34d))
 
 
 }
