@@ -8,3 +8,4 @@ libraryDependencies += "EPFL" %% "lms" % "0.3-SNAPSHOT"
 
 scalacOptions ++= Seq("-Yvirtualize","-feature")
 
+javaOptions += "-server"
